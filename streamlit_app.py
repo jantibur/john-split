@@ -1,0 +1,122 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+
+vin_df = pd.DataFrame([{"60": 0, "100": 0, "200": 0, "350": 0, "1L": 0}], dtype=int)
+soy_df = pd.DataFrame([{"60": 0, "100": 0, "200": 0, "350": 0, "1L": 0}], dtype=int)
+ufc_df = pd.DataFrame([{"25": 0, "100": 0, "325": 0, "550": 0, "1L": 0}], dtype=int)
+
+price_list = {
+    "VIN 60": 3.5, "VIN 100": 5.5, "VIN 200": 7.6, "VIN 350": 17.75, "VIN 1L": 41.25,
+    "SOY 60": 4, "SOY 100": 6.25, "SOY 200": 10, "SOY 350": 18.75, "SOY 1L": 51,
+    "UFC 25": 3.5, "UFC 100": 10.25, "UFC 325": 25, "UFC 550": 42.5, "UFC 1L": 66.75
+}
+
+with st.container(border=True):
+    n_split = st.number_input(min_value=1, max_value=50, label="Number of Splits", step=1, icon="🧾")
+
+with st.container(border=True):
+    st.header("🎍 VINEGAR")
+    vin_df_i = st.data_editor(vin_df, column_config={
+        "60": st.column_config.NumberColumn("60", min_value=0),
+        "100": st.column_config.NumberColumn("100", min_value=0),
+        "200": st.column_config.NumberColumn("200", min_value=0),
+        "350": st.column_config.NumberColumn("350", min_value=0),
+        "1L": st.column_config.NumberColumn("1L", min_value=0),
+    }, hide_index=True, key="vin_df")
+
+with st.container(border=True):
+    st.header("🫘 SOY")
+    soy_df_i = st.data_editor(soy_df, column_config={
+        "60": st.column_config.NumberColumn("60", min_value=0),
+        "100": st.column_config.NumberColumn("100", min_value=0),
+        "200": st.column_config.NumberColumn("200", min_value=0),
+        "350": st.column_config.NumberColumn("350", min_value=0),
+        "1L": st.column_config.NumberColumn("1L", min_value=0),
+    }, hide_index=True, key="soy_df")
+
+with st.container(border=True):
+    st.header("🍅 UFC")
+    ufc_df_i = st.data_editor(ufc_df, column_config={
+        "25": st.column_config.NumberColumn("25", min_value=0),
+        "100": st.column_config.NumberColumn("100", min_value=0),
+        "325": st.column_config.NumberColumn("325", min_value=0),
+        "550": st.column_config.NumberColumn("550", min_value=0),
+        "1L": st.column_config.NumberColumn("1L", min_value=0),
+    }, hide_index=True, key="ufc_df")
+
+def df_to_dict(df, prod):
+    if prod not in ("VIN", "SOY", "UFC"):
+        raise ValueError("Invalid product...")
+    
+    df = df.fillna(0).astype(int)
+
+    df_dict = {}
+
+    for size in df:
+        for amount in df[size]:
+            df_dict[f"{prod} {size}"] = amount
+
+    df_dict_f = df_dict.copy()
+
+    for key, item in df_dict_f.items():
+        if item == 0:
+            df_dict.pop(key)
+
+    return df_dict
+
+def split_num(num, n_split):
+    c = np.zeros(n_split)
+    
+    i = 0
+    while(sum(c) < num):
+        c[i] += 1
+        if i == n_split - 1:
+            i = 0
+        else:
+            i += 1
+    
+    return c.tolist()
+
+
+def split_dict(prod_dict):
+    spl_dict = {}
+    for key, item in prod_dict.items():
+        spl_dict[key] = split_num(item, n_split)
+    return spl_dict
+
+def const_invoice(spl_dict, n_split):
+    invoices = []
+
+    for i in range(n_split):
+        c_invoice = []
+        for key, _ in spl_dict.items():
+            c_invoice.append({"Product": key, "Amount": spl_dict[key][i], "Price": spl_dict[key][i] * price_list[key]})    
+        invoices.append(c_invoice)
+
+    for i, invoice in enumerate(invoices):
+        invoices[i] = [item for item in invoice if item["Amount"] != 0.0]
+
+    return invoices
+
+
+split_btn = st.button(width="stretch", label="Split", icon="🧾")
+if split_btn:
+    vin_df_dict = df_to_dict(vin_df_i, "VIN")
+    soy_df_dict = df_to_dict(soy_df_i, "SOY")
+    ufc_df_dict = df_to_dict(ufc_df_i, "UFC")
+    
+    vin_spl_dict = split_dict(vin_df_dict)
+    soy_spl_dict = split_dict(soy_df_dict)
+    ufc_spl_dict = split_dict(ufc_df_dict)
+    spl_dict = vin_spl_dict | soy_spl_dict | ufc_spl_dict
+    
+    invoices = const_invoice(spl_dict, n_split)
+
+    if len(spl_dict) > 0:
+        for i, invoice in enumerate(invoices):
+            with st.container(border=True):
+                st.header(f"Invoice {i+1}")
+                st.dataframe(invoice)
+    else:
+        st.header("Please input required data first...")
