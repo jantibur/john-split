@@ -9,7 +9,7 @@ ufc_df = pd.DataFrame([{"25": 0, "100": 0, "325": 0, "550": 0, "1L": 0}], dtype=
 price_list = {
     "VIN 60": 3.5, "VIN 100": 5.5, "VIN 200": 7.6, "VIN 350": 17.75, "VIN 1L": 41.25,
     "SOY 60": 4, "SOY 100": 6.25, "SOY 200": 10, "SOY 350": 18.75, "SOY 1L": 51,
-    "UFC 25": 3.5, "UFC 100": 10.25, "UFC 325": 25, "UFC 550": 42.5, "UFC 1L": 66.75
+    "UFC 25": 3.5, "UFC 100": 10.25, "UFC 325": 26, "UFC 550": 42.5, "UFC 1L": 66.75
 }
 
 with st.container(border=True):
@@ -114,9 +114,17 @@ if split_btn:
     invoices = const_invoice(spl_dict, n_split)
 
     if len(spl_dict) > 0:
+        invoice_p = []
         for i, invoice in enumerate(invoices):
+            for invoice in invoices:
+                c_inv_p = []
+                for item in invoice:
+                    c_inv_p.append(item["Price"])
+                invoice_p.append(c_inv_p)
             with st.container(border=True):
                 st.header(f"Invoice {i+1}")
                 st.dataframe(invoice)
+
+                st.markdown(f"Total price: **{sum(invoice_p[i])}**")            
     else:
         st.header("Please input required data first...")
