@@ -53,15 +53,10 @@ def df_to_dict(df, prod):
 
     df_dict = {}
 
-    for size in df:
-        for amount in df[size]:
-            df_dict[f"{prod} {size}"] = amount
-
-    df_dict_f = df_dict.copy()
-
-    for key, item in df_dict_f.items():
-        if item == 0:
-            df_dict.pop(key)
+    for size in df.columns:
+        amount = int(df[size].iloc[0])
+        if amount != 0:
+            df_dict[f"{prod} {size}"] = int(amount)
 
     return df_dict
 
@@ -79,7 +74,7 @@ def split_num(num, n_split):
     return c.tolist()
 
 
-def split_dict(prod_dict):
+def split_dict(prod_dict, n_split):
     spl_dict = {}
     for key, item in prod_dict.items():
         spl_dict[key] = split_num(item, n_split)
@@ -90,41 +85,37 @@ def const_invoice(spl_dict, n_split):
 
     for i in range(n_split):
         c_invoice = []
-        for key, _ in spl_dict.items():
-            c_invoice.append({"Product": key, "Amount": spl_dict[key][i], "Price": spl_dict[key][i] * price_list[key]})    
-        invoices.append(c_invoice)
-
-    for i, invoice in enumerate(invoices):
-        invoices[i] = [item for item in invoice if item["Amount"] != 0.0]
+        for key, amounts in spl_dict.items(): 
+            amount = int(amounts[i]) if i < len(amounts) else 0   
+            if amount > 0:
+                price = price_list.get(key, 0)
+                c_invoice.append({"Product": key, "Amount": amount, "Unit Price": price, "Price": amount * price})
+        if c_invoice:
+            invoices.append(c_invoice)
 
     return invoices
 
 
 split_btn = st.button(width="stretch", label="Split", icon="🧾")
+
 if split_btn:
     vin_df_dict = df_to_dict(vin_df_i, "VIN")
     soy_df_dict = df_to_dict(soy_df_i, "SOY")
     ufc_df_dict = df_to_dict(ufc_df_i, "UFC")
     
-    vin_spl_dict = split_dict(vin_df_dict)
-    soy_spl_dict = split_dict(soy_df_dict)
-    ufc_spl_dict = split_dict(ufc_df_dict)
+    vin_spl_dict = split_dict(vin_df_dict, n_split)
+    soy_spl_dict = split_dict(soy_df_dict, n_split)
+    ufc_spl_dict = split_dict(ufc_df_dict, n_split)
     spl_dict = vin_spl_dict | soy_spl_dict | ufc_spl_dict
     
     invoices = const_invoice(spl_dict, n_split)
 
-    if len(spl_dict) > 0:
-        invoice_p = []
-        for i, invoice in enumerate(invoices):
-            for invoice in invoices:
-                c_inv_p = []
-                for item in invoice:
-                    c_inv_p.append(item["Price"])
-                invoice_p.append(c_inv_p)
+    if len(invoices) == n_split:
+        for i, invoice in enumerate(invoices): 
             with st.container(border=True):
-                st.header(f"Invoice {i+1}")
+                c_inv_p = [item["Price"] for item in invoice]
+                st.header(f"Invoice {i+1}") 
                 st.dataframe(invoice)
-
-                st.markdown(f"Total price: **{sum(invoice_p[i])}**")            
+                st.markdown(f"Total price: **{sum(c_inv_p)}**")            
     else:
         st.header("Please input required data first...")
